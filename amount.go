@@ -18,3 +18,12 @@ func FenS2Yuan(amount string) string {
 	}
 	return fmt.Sprintf("%.2f", float64(parseInt)/100)
 }
+
+// FenSF2Yuan 分转元(字符串转字符串）
+func FenSF2Yuan(amount string) string {
+	f, err := strconv.ParseFloat(amount, 64)
+	if err != nil {
+		return amount
+	}
+	return fmt.Sprintf("%.2f", f/100)
+}
