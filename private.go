@@ -29,3 +29,14 @@ func InitWxConfig(path string) (WxConfig, error) {
 	GlobalWxConfig = wxc
 	return wxc, nil
 }
+
+// LoadPrivateKey 加载密钥
+func LoadPrivateKey(key string) (*rsa.PrivateKey, error) {
+	// 加载商户私钥
+	mchPrivateKey, err := utils.LoadPrivateKey(key)
+	if err != nil {
+		log.Log().WithField("key", key).Error("加载商户密钥失败")
+		return nil, err
+	}
+	return mchPrivateKey, nil
+}
