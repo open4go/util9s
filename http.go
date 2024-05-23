@@ -55,11 +55,13 @@ func Get(urlStr string, rsp interface{}) error {
 	respByte, err := io.ReadAll(resp.Body)
 	if err != nil {
 		logError(urlStr, err, "读取响应出错")
+		log.Log().WithField("url", urlStr).WithField("resp", resp).Error(err)
 		return err
 	}
 
 	if err := json.Unmarshal(respByte, rsp); err != nil {
 		logError(urlStr, err, fmt.Sprintf("解析响应出错: %s", string(respByte)))
+		log.Log().WithField("url", urlStr).WithField("respByte", string(respByte)).Error(err)
 		return err
 	}
 	return nil
