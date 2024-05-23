@@ -3,6 +3,8 @@ package util9s
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
+	"fmt"
 	"github.com/open4go/log"
 	"io"
 	"net/http"
@@ -44,6 +46,12 @@ func Get(urlStr string, rsp interface{}) error {
 	}
 	defer closeResponseBody(resp.Body, urlStr)
 
+	if resp.StatusCode != 200 {
+		err := errors.New("resp status code is no 200")
+		logError(urlStr, err, "响应码错误")
+		return err
+	}
+
 	respByte, err := io.ReadAll(resp.Body)
 	if err != nil {
 		logError(urlStr, err, "读取响应出错")
@@ -51,7 +59,7 @@ func Get(urlStr string, rsp interface{}) error {
 	}
 
 	if err := json.Unmarshal(respByte, rsp); err != nil {
-		logError(urlStr, err, "解析响应出错")
+		logError(urlStr, err, fmt.Sprintf("解析响应出错: %s", string(respByte)))
 		return err
 	}
 	return nil
