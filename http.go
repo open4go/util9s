@@ -47,7 +47,7 @@ func Get(urlStr string, rsp interface{}) error {
 	defer closeResponseBody(resp.Body, urlStr)
 
 	if resp.StatusCode != 200 {
-		err := errors.New("resp status code is no 200")
+		err := errors.New(fmt.Sprintf("resp status code is %d | %s", resp.StatusCode, resp.Status))
 		logError(urlStr, err, "响应码错误")
 		return err
 	}
