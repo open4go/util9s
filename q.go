@@ -34,12 +34,13 @@ func MakeMyQueue() MyQueue {
 // GenerateQueueNumber 下单时调用
 func (q *MyQueue) GenerateQueueNumber(storeID string) (int64, error) {
 	today := time.Now().Format("2006-01-02")
-	queueKey := fmt.Sprintf("queue:%s:%s", storeID, today)
+	queueKey := fmt.Sprintf("queue:counter:%s:%s", storeID, today)
 
 	queueNumber, err := q.Rdb.Incr(q.Ctx, queueKey).Result()
 	if err != nil {
 		return 0, err
 	}
+	q.Rdb.Expire(q.Ctx, queueKey, time.Hour*48)
 	return queueNumber, nil
 }
 
