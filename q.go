@@ -73,51 +73,14 @@ func (q *MyQueue) CompleteOrder(storeID string, orderNumber string) error {
 }
 
 // GetQueuePosition 查看订单详情时
-func (q *MyQueue) GetQueuePosition(storeID string, orderNumber int64) (int64, error) {
+func (q *MyQueue) GetQueuePosition(storeID string, orderNumber string) (int64, error) {
 	today := time.Now().Format("2006-01-02")
 	queueKey := fmt.Sprintf("queue:%s:%s", storeID, today)
 
-	position, err := q.Rdb.ZRank(q.Ctx, queueKey, fmt.Sprintf("%d", orderNumber)).Result()
+	position, err := q.Rdb.ZRank(q.Ctx, queueKey, fmt.Sprintf("%s", orderNumber)).Result()
 	if err != nil {
 		return 0, err
 	}
 
 	return position + 1, nil
 }
-
-//func main() {
-//	rdb := newRedisClient()
-//	storeID := "store123"
-//
-//	// 生成新的排队号
-//	orderNumber, err := generateQueueNumber(rdb, storeID)
-//	if err != nil {
-//		fmt.Println("Error generating queue number:", err)
-//		return
-//	}
-//
-//	// 添加订单到队列
-//	err = addOrderToQueue(rdb, storeID, orderNumber)
-//	if err != nil {
-//		fmt.Println("Error adding order to queue:", err)
-//		return
-//	}
-//
-//	// 获取订单排队位置
-//	position, err := getQueuePosition(rdb, storeID, orderNumber)
-//	if err != nil {
-//		fmt.Println("Error getting queue position:", err)
-//		return
-//	}
-//
-//	fmt.Printf("Order %d is at position %d in the queue\n", orderNumber, position)
-//
-//	// 完成订单
-//	err = completeOrder(rdb, storeID, orderNumber)
-//	if err != nil {
-//		fmt.Println("Error completing order:", err)
-//		return
-//	}
-//
-//	fmt.Printf("Order %d completed\n", orderNumber)
-//}
