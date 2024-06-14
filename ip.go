@@ -1,5 +1,7 @@
 package util9s
 
+import "context"
+
 type IPInfo struct {
 	Status      string  `json:"status"`
 	Country     string  `json:"country"`
@@ -21,10 +23,10 @@ const (
 	ipAPI = "http://ip-api.com/json/"
 )
 
-func IP2Area(ip string) IPInfo {
+func IP2Area(ctx context.Context, ip string) IPInfo {
 	// http://ip-api.com/json/182.89.35.123
 	resp := IPInfo{}
-	err := Get(ipAPI+ip, &resp)
+	err := Get(ctx, ipAPI+ip, &resp)
 	if err != nil {
 		return resp
 	}

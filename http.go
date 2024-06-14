@@ -2,6 +2,7 @@ package util9s
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -15,83 +16,87 @@ const (
 )
 
 // Post 请求
-func Post(urlStr string, reqParam interface{}) ([]byte, error) {
+func Post(ctx context.Context, urlStr string, reqParam interface{}) ([]byte, error) {
 	reqByte, err := json.Marshal(reqParam)
 	if err != nil {
-		logError(urlStr, err, "请求参数序列化失败")
+		log.Log(ctx).WithField("url", urlStr).Error(err)
 		return nil, err
 	}
 
 	resp, err := http.Post(urlStr, jsonContentType, bytes.NewBuffer(reqByte))
 	if err != nil {
-		logError(urlStr, err, "Post 请求失败")
+		log.Log(ctx).WithField("url", urlStr).WithField("reqParam", reqParam).
+			Error(err)
 		return nil, err
 	}
-	defer closeResponseBody(resp.Body, urlStr)
+	defer closeResponseBody(ctx, resp.Body, urlStr)
 
 	respByte, err := io.ReadAll(resp.Body)
 	if err != nil {
-		logError(urlStr, err, "读取响应出错")
+		log.Log(ctx).WithField("url", urlStr).
+			WithField("reqParam", reqParam).
+			WithField("respByte", string(respByte)).
+			Error(err)
 		return nil, err
 	}
 	return respByte, nil
 }
 
 // Get http请求
-func Get(urlStr string, rsp interface{}) error {
+func Get(ctx context.Context, urlStr string, rsp interface{}) error {
 	resp, err := http.Get(urlStr)
 	if err != nil {
-		logError(urlStr, err, "Get 请求失败")
+		log.Log(ctx).WithField("url", urlStr).Error(err)
 		return err
 	}
-	defer closeResponseBody(resp.Body, urlStr)
+	defer closeResponseBody(ctx, resp.Body, urlStr)
 
 	if resp.StatusCode != 200 {
-		err := errors.New(fmt.Sprintf("resp status code is %d | %s", resp.StatusCode, resp.Status))
-		logError(urlStr, err, "响应码错误")
+		err := errors.New(fmt.Sprintf("resp status code is %d | %s",
+			resp.StatusCode, resp.Status))
+		log.Log(ctx).WithField("url", urlStr).WithField("resp", resp).
+			Error(err)
 		return err
 	}
 
 	respByte, err := io.ReadAll(resp.Body)
 	if err != nil {
-		logError(urlStr, err, "读取响应出错")
-		log.Log().WithField("url", urlStr).WithField("resp", resp).Error(err)
+		log.Log(ctx).WithField("url", urlStr).
+			WithField("respByte", string(respByte)).
+			Error(err)
 		return err
 	}
 
 	if err := json.Unmarshal(respByte, rsp); err != nil {
-		logError(urlStr, err, fmt.Sprintf("解析响应出错: %s", string(respByte)))
-		log.Log().WithField("url", urlStr).WithField("respByte", string(respByte)).Error(err)
+		log.Log(ctx).WithField("url", urlStr).
+			WithField("respByte", string(respByte)).
+			Error(err)
 		return err
 	}
 	return nil
 }
 
 // FetchByPost 通过post 获取结果
-func FetchByPost(urlStr string, reqParam interface{}, rsp interface{}) error {
-	respBytes, err := Post(urlStr, reqParam)
+func FetchByPost(ctx context.Context, urlStr string, reqParam interface{}, rsp interface{}) error {
+	respBytes, err := Post(ctx, urlStr, reqParam)
 	if err != nil {
-		logError(urlStr, err, "Post 请求失败")
+		log.Log(ctx).WithField("url", urlStr).WithField("req", reqParam).
+			Error(err)
 		return err
 	}
 
 	// 解析参数
 	if err := json.Unmarshal(respBytes, rsp); err != nil {
-		logError(urlStr, err, "解析响应出错")
+		log.Log(ctx).WithField("url", urlStr).WithField("req", reqParam).
+			Error(err)
 		return err
 	}
 	return nil
 }
 
-func logError(url string, err error, message string) {
-	log.Log().WithField("url", url).
-		WithField("err", err.Error()).
-		Error(message)
-}
-
-func closeResponseBody(body io.ReadCloser, url string) {
+func closeResponseBody(ctx context.Context, body io.ReadCloser, url string) {
 	if err := body.Close(); err != nil {
-		log.Log().WithField("url", url).
+		log.Log(ctx).WithField("url", url).
 			WithField("err", err.Error()).
 			Error("关闭响应体出错")
 	}

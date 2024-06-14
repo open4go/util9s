@@ -1,6 +1,7 @@
 package util9s
 
 import (
+	"context"
 	"crypto/rsa"
 	"github.com/open4go/log"
 	"github.com/wechatpay-apiv3/wechatpay-go/utils"
@@ -16,12 +17,12 @@ var (
 )
 
 // InitWxConfig 加载密钥
-func InitWxConfig(path string) (WxConfig, error) {
+func InitWxConfig(ctx context.Context, path string) (WxConfig, error) {
 	wxc := WxConfig{}
 	// 加载商户私钥
 	mchPrivateKey, err := utils.LoadPrivateKeyWithPath(path)
 	if err != nil {
-		log.Log().WithField("path", path).Error("加载商户密钥失败")
+		log.Log(ctx).WithField("path", path).Error("加载商户密钥失败")
 		return wxc, err
 	}
 	wxc.PrivateKey = mchPrivateKey
@@ -31,11 +32,11 @@ func InitWxConfig(path string) (WxConfig, error) {
 }
 
 // LoadPrivateKey 加载密钥
-func LoadPrivateKey(key string) (*rsa.PrivateKey, error) {
+func LoadPrivateKey(ctx context.Context, key string) (*rsa.PrivateKey, error) {
 	// 加载商户私钥
 	mchPrivateKey, err := utils.LoadPrivateKey(key)
 	if err != nil {
-		log.Log().WithField("key", key).Error("加载商户密钥失败")
+		log.Log(ctx).WithField("key", key).Error("加载商户密钥失败")
 		return nil, err
 	}
 	return mchPrivateKey, nil
