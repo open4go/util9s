@@ -9,10 +9,12 @@ import (
 	"github.com/open4go/log"
 	"io"
 	"net/http"
+	"strings"
 )
 
 const (
 	jsonContentType = "application/json"
+	formContentType = "application/x-www-form-urlencoded"
 )
 
 // Post 请求
@@ -100,4 +102,27 @@ func closeResponseBody(ctx context.Context, body io.ReadCloser, url string) {
 			WithField("err", err.Error()).
 			Error("关闭响应体出错")
 	}
+}
+
+// PostForm 发送post请求
+// 并且走签名
+func PostForm(ctx context.Context, urlStr, secretKey string, reqParam any) ([]byte, error) {
+	formData := Signature(secretKey, reqParam)
+	formRequest := strings.NewReader(formData)
+	resp, err := http.Post(urlStr, formContentType, formRequest)
+	if err != nil {
+		log.Log(ctx).WithField("url", urlStr).WithField("reqParam", reqParam).
+			Error(err)
+		return nil, err
+	}
+	defer closeResponseBody(ctx, resp.Body, urlStr)
+	respByte, err := io.ReadAll(resp.Body)
+	if err != nil {
+		log.Log(ctx).WithField("url", urlStr).
+			WithField("reqParam", reqParam).
+			WithField("respByte", string(respByte)).
+			Error(err)
+		return nil, err
+	}
+	return respByte, nil
 }
