@@ -11,36 +11,55 @@ import (
 func GetFieldString(sendParamEntity interface{}) string {
 	m := reflect.TypeOf(sendParamEntity)
 	v := reflect.ValueOf(sendParamEntity)
+
+	// Check if the type is a pointer and get the element type
+	if m.Kind() == reflect.Ptr {
+		m = m.Elem()
+		v = v.Elem()
+	}
+
+	// If the type is not a struct, return an empty string
+	if m.Kind() != reflect.Struct {
+		return ""
+	}
+
 	var tagName string
 	numField := m.NumField()
-	w := make([]string, numField)
-	numFieldCount := 0
+	w := make([]string, 0, numField)
+
 	for i := 0; i < numField; i++ {
-		fieldName := m.Field(i).Name
-		tags := strings.Split(string(m.Field(i).Tag), "\"")
+		field := m.Field(i)
+		fieldValue := v.Field(i)
+
+		// Check if the field is valid and can be accessed
+		if !fieldValue.IsValid() || !fieldValue.CanInterface() {
+			continue
+		}
+
+		fieldName := field.Name
+		tags := strings.Split(string(field.Tag), "\"")
 		if len(tags) > 1 {
 			tagName = tags[1]
 		} else {
-			tagName = m.Field(i).Name
+			tagName = fieldName
 		}
 		if tagName == "xml" {
 			continue
 		}
-		fieldValue := v.FieldByName(fieldName).Interface()
 
-		if fieldValue != "" {
+		// Only add non-empty field values
+		if fieldValue.Interface() != "" {
 			if strings.Contains(tagName, "omitempty") {
 				tagName = strings.Split(tagName, ",")[0]
 			}
-			s := fmt.Sprintf("%s=%v", tagName, fieldValue)
-			w[numFieldCount] = s
-			numFieldCount++
+			s := fmt.Sprintf("%s=%v", tagName, fieldValue.Interface())
+			w = append(w, s)
 		}
 	}
-	if numFieldCount == 0 {
+
+	if len(w) == 0 {
 		return ""
 	}
-	w = w[:numFieldCount]
 	sort.Strings(w)
 	return strings.Join(w, "&")
 }
