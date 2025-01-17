@@ -111,7 +111,7 @@ func GetRemainingStockNumber(ctx context.Context, productID string) int {
 func demo() {
 	ctx := context.TODO()
 	// 初始化商品库存
-	err := InitializeDailyStock(ctx, "product_1", 100)
+	err := InitializeDailyStock(ctx, "product_1", 100, false)
 	if err != nil {
 		fmt.Println("初始化库存失败:", err)
 		return
