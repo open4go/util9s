@@ -37,7 +37,11 @@ func InitializeDailyStock(ctx context.Context, productID string, maxSupply int) 
 }
 
 // SellProduct 销售商品
-func SellProduct(ctx context.Context, productID string) (string, error) {
+func SellProduct(ctx context.Context, productID string, quantity int) (string, error) {
+	if quantity <= 0 {
+		return "", errors.New("销售数量必须大于 0")
+	}
+
 	dateKey := fmt.Sprintf("product_stock:%s", time.Now().Format("2006-01-02"))
 
 	// 检查商品是否存在库存
@@ -53,23 +57,23 @@ func SellProduct(ctx context.Context, productID string) (string, error) {
 	// 使用 Lua 脚本原子性减少库存
 	luaScript := `
 		local stock = redis.call("HGET", KEYS[1], ARGV[1])
-		if tonumber(stock) > 0 then
-			redis.call("HINCRBY", KEYS[1], ARGV[1], -1)
-			return tonumber(stock) - 1
+		if tonumber(stock) >= tonumber(ARGV[2]) then
+			redis.call("HINCRBY", KEYS[1], ARGV[1], -tonumber(ARGV[2]))
+			return tonumber(stock) - tonumber(ARGV[2])
 		else
 			return -1
 		end
 	`
-	result, err := db.GetRedisCacheHandler(ctx).Eval(ctx, luaScript, []string{dateKey}, productID).Result()
+	result, err := db.GetRedisCacheHandler(ctx).Eval(ctx, luaScript, []string{dateKey}, productID, quantity).Result()
 	if err != nil {
 		return "", err
 	}
 
 	remainingStock := int(result.(int64))
 	if remainingStock == -1 {
-		return fmt.Sprintf("商品 %s 已售罄！", productID), nil
+		return fmt.Sprintf("商品 %s 库存不足，无法售出 %d 件！", productID, quantity), nil
 	}
-	return fmt.Sprintf("商品 %s 售出 1 件，剩余库存: %d", productID, remainingStock), nil
+	return fmt.Sprintf("商品 %s 售出 %d 件，剩余库存: %d", productID, quantity, remainingStock), nil
 }
 
 // GetRemainingStock 查询当前剩余库存
@@ -116,7 +120,7 @@ func demo() {
 
 	// 销售商品
 	for i := 0; i < 105; i++ {
-		sellMsg, err := SellProduct(ctx, "product_1")
+		sellMsg, err := SellProduct(ctx, "product_1", 1)
 		if err != nil {
 			fmt.Println("销售失败:", err)
 			return
