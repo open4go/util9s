@@ -10,8 +10,15 @@ import (
 )
 
 // InitializeDailyStock 初始化每日库存
-func InitializeDailyStock(ctx context.Context, productID string, maxSupply int) error {
+func InitializeDailyStock(ctx context.Context, productID string, maxSupply int, forceFresh bool) error {
 	dateKey := fmt.Sprintf("product_stock:%s", time.Now().Format("2006-01-02"))
+
+	if forceFresh {
+		err := db.GetRedisCacheHandler(ctx).HDel(ctx, dateKey, productID).Err()
+		if err != nil {
+			return err
+		}
+	}
 
 	// 检查键是否已经存在
 	exists, err := db.GetRedisCacheHandler(ctx).HExists(ctx, dateKey, productID).Result()
