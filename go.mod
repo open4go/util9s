@@ -1,6 +1,6 @@
 module github.com/open4go/util9s
 
-go 1.21.5
+go 1.24.0
 
 require (
 	github.com/open4go/db v0.0.6
