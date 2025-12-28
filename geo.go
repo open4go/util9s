@@ -1,0 +1,22 @@
+package util9s
+
+import "math"
+
+const earthRadius = 6371000 // 地球半径，单位：米
+
+// CalcDistanceMeters 计算两点间距离（米）
+func CalcDistanceMeters(lat1, lng1, lat2, lng2 float64) float64 {
+	rad := math.Pi / 180
+
+	lat1Rad := lat1 * rad
+	lat2Rad := lat2 * rad
+	deltaLat := (lat2 - lat1) * rad
+	deltaLng := (lng2 - lng1) * rad
+
+	a := math.Sin(deltaLat/2)*math.Sin(deltaLat/2) +
+		math.Cos(lat1Rad)*math.Cos(lat2Rad)*
+			math.Sin(deltaLng/2)*math.Sin(deltaLng/2)
+
+	c := 2 * math.Atan2(math.Sqrt(a), math.Sqrt(1-a))
+	return earthRadius * c
+}
