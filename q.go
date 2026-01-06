@@ -84,3 +84,33 @@ func (q *MyQueue) GetQueuePosition(storeID string, orderNumber string) (int64, e
 
 	return position + 1, nil
 }
+
+func (q *MyQueue) BatchGetQueuePosition(
+	storeID string,
+	orderNos []string,
+) (map[string]int64, error) {
+
+	today := time.Now().Format("2006-01-02")
+	queueKey := fmt.Sprintf("queue:%s:%s", storeID, today)
+
+	pipe := q.Rdb.Pipeline()
+	cmds := make(map[string]*redis.IntCmd)
+
+	for _, orderNo := range orderNos {
+		cmds[orderNo] = pipe.ZRank(q.Ctx, queueKey, orderNo)
+	}
+
+	_, err := pipe.Exec(q.Ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	result := make(map[string]int64, len(orderNos))
+	for orderNo, cmd := range cmds {
+		if v, err := cmd.Result(); err == nil {
+			result[orderNo] = v + 1
+		}
+	}
+
+	return result, nil
+}
