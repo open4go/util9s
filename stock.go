@@ -10,8 +10,8 @@ import (
 )
 
 // InitializeDailyStock 初始化每日库存
-func InitializeDailyStock(ctx context.Context, productID string, maxSupply int, forceFresh bool) error {
-	dateKey := fmt.Sprintf("product_stock:%s", time.Now().Format("2006-01-02"))
+func InitializeDailyStock(ctx context.Context, merchantId string, storeId string, productID string, maxSupply int, forceFresh bool) error {
+	dateKey := fmt.Sprintf("product_stock:%s:%s:%s", merchantId, storeId, time.Now().Format("2006-01-02"))
 
 	if forceFresh {
 		err := db.GetRedisCacheHandler(ctx).HDel(ctx, dateKey, productID).Err()
@@ -32,9 +32,9 @@ func InitializeDailyStock(ctx context.Context, productID string, maxSupply int, 
 		if err != nil {
 			return err
 		}
-		// 设置键的过期时间为当天结束时间
+		// 设置键的过期时间为7天后删除库存缓存
 		now := time.Now()
-		expireTime := time.Date(now.Year(), now.Month(), now.Day()+1, 0, 0, 0, 0, now.Location())
+		expireTime := time.Date(now.Year(), now.Month(), now.Day()+7, 0, 0, 0, 0, now.Location())
 		err = db.GetRedisCacheHandler(ctx).ExpireAt(ctx, dateKey, expireTime).Err()
 		if err != nil {
 			return err
@@ -44,12 +44,12 @@ func InitializeDailyStock(ctx context.Context, productID string, maxSupply int, 
 }
 
 // SellProduct 销售商品
-func SellProduct(ctx context.Context, productID string, quantity int) (string, error) {
+func SellProduct(ctx context.Context, merchantId string, storeId string, productID string, quantity int) (string, error) {
 	if quantity <= 0 {
 		return "", errors.New("销售数量必须大于 0")
 	}
 
-	dateKey := fmt.Sprintf("product_stock:%s", time.Now().Format("2006-01-02"))
+	dateKey := fmt.Sprintf("product_stock:%s:%s:%s", merchantId, storeId, time.Now().Format("2006-01-02"))
 
 	// 检查商品是否存在库存
 	exists, err := db.GetRedisCacheHandler(ctx).HExists(ctx, dateKey, productID).Result()
@@ -84,8 +84,9 @@ func SellProduct(ctx context.Context, productID string, quantity int) (string, e
 }
 
 // GetRemainingStock 查询当前剩余库存
-func GetRemainingStock(ctx context.Context, productID string) (int, error) {
-	dateKey := fmt.Sprintf("product_stock:%s", time.Now().Format("2006-01-02"))
+func GetRemainingStock(ctx context.Context, merchantId string, storeId string, productID string) (int, error) {
+
+	dateKey := fmt.Sprintf("product_stock:%s:%s:%s", merchantId, storeId, time.Now().Format("2006-01-02"))
 
 	// 获取库存
 	stock, err := db.GetRedisCacheHandler(ctx).HGet(ctx, dateKey, productID).Int()
@@ -98,8 +99,8 @@ func GetRemainingStock(ctx context.Context, productID string) (int, error) {
 	return stock, nil
 }
 
-func GetRemainingStockNumber(ctx context.Context, productID string) int {
-	stock, err := GetRemainingStock(ctx, productID)
+func GetRemainingStockNumber(ctx context.Context, merchantId string, storeId string, productID string) int {
+	stock, err := GetRemainingStock(ctx, merchantId, storeId, productID)
 	if err != nil {
 		return 0
 	} else {
@@ -111,14 +112,14 @@ func GetRemainingStockNumber(ctx context.Context, productID string) int {
 func demo() {
 	ctx := context.TODO()
 	// 初始化商品库存
-	err := InitializeDailyStock(ctx, "product_1", 100, false)
+	err := InitializeDailyStock(ctx, "mch01", "store02", "product_1", 100, false)
 	if err != nil {
 		fmt.Println("初始化库存失败:", err)
 		return
 	}
 
 	// 查询库存
-	stockMsg, err := GetRemainingStock(ctx, "product_1")
+	stockMsg, err := GetRemainingStock(ctx, "mch01", "store02", "product_1")
 	if err != nil {
 		fmt.Println("查询库存失败:", err)
 		return
@@ -127,7 +128,7 @@ func demo() {
 
 	// 销售商品
 	for i := 0; i < 105; i++ {
-		sellMsg, err := SellProduct(ctx, "product_1", 1)
+		sellMsg, err := SellProduct(ctx, "mch01", "store02", "product_1", 1)
 		if err != nil {
 			fmt.Println("销售失败:", err)
 			return
@@ -136,7 +137,7 @@ func demo() {
 	}
 
 	// 再次查询库存
-	stockMsg, err = GetRemainingStock(ctx, "product_1")
+	stockMsg, err = GetRemainingStock(ctx, "mch01", "store02", "product_1")
 	if err != nil {
 		fmt.Println("查询库存失败:", err)
 		return
