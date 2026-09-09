@@ -147,3 +147,20 @@ func decryptWith(key []byte, encrypted string) (string, error) {
 	}
 	return string(plain), nil
 }
+
+func Hash(data string) string {
+	data = strings.TrimSpace(data)
+	if data == "" {
+		return ""
+	}
+	h := sha256.Sum256([]byte(data))
+	return hex.EncodeToString(h[:])
+}
+
+func Suffix(data string, n int) string {
+	data = strings.TrimSpace(data)
+	if n <= 0 || len(data) <= n {
+		return data
+	}
+	return data[len(data)-n:]
+}
