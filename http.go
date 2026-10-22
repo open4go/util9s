@@ -4,12 +4,12 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
-	"github.com/open4go/log"
 	"io"
 	"net/http"
 	"strings"
+
+	"github.com/open4go/log"
 )
 
 const (
@@ -54,8 +54,8 @@ func Get(ctx context.Context, urlStr string, rsp interface{}) error {
 	defer closeResponseBody(ctx, resp.Body, urlStr)
 
 	if resp.StatusCode != 200 {
-		err := errors.New(fmt.Sprintf("resp status code is %d | %s",
-			resp.StatusCode, resp.Status))
+		err := fmt.Errorf("resp status code is %d | %s",
+			resp.StatusCode, resp.Status)
 		log.Log(ctx).WithField("url", urlStr).WithField("resp", resp).
 			Error(err)
 		return err
