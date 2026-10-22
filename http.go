@@ -7,10 +7,49 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"strings"
 
 	"github.com/open4go/log"
+	"github.com/spf13/viper"
 )
+
+// InternalTokenHeader 服务间调用令牌请求头，与 open4go/middle.RPCAuthMiddleware 一致。
+const InternalTokenHeader = "X-Internal-Token"
+
+// internalToken 读取服务间令牌（rpc.auth_token，兼容旧配置 rpc.token）。
+func internalToken() string {
+	if t := strings.TrimSpace(viper.GetString("rpc.auth_token")); t != "" {
+		return t
+	}
+	return strings.TrimSpace(viper.GetString("rpc.token"))
+}
+
+// isInternalRPC 仅对路径中含 /rpc/ 的地址（内部服务接口）携带令牌，避免把令牌发给第三方。
+func isInternalRPC(urlStr string) bool {
+	u, err := url.Parse(urlStr)
+	if err != nil {
+		return false
+	}
+	return strings.Contains(u.Path+"/", "/rpc/")
+}
+
+// doInternal 与 http.Get / http.Post 行为一致；访问内部 /rpc/ 接口时自动加上 X-Internal-Token。
+func doInternal(method, urlStr, contentType string, body io.Reader) (*http.Response, error) {
+	req, err := http.NewRequest(method, urlStr, body) //nolint:noctx // 保持与原 http.Get/http.Post 相同的语义（不随请求 context 取消）
+	if err != nil {
+		return nil, err
+	}
+	if contentType != "" {
+		req.Header.Set("Content-Type", contentType)
+	}
+	if isInternalRPC(urlStr) {
+		if t := internalToken(); t != "" {
+			req.Header.Set(InternalTokenHeader, t)
+		}
+	}
+	return http.DefaultClient.Do(req)
+}
 
 const (
 	jsonContentType = "application/json"
@@ -25,7 +64,7 @@ func Post(ctx context.Context, urlStr string, reqParam interface{}) ([]byte, err
 		return nil, err
 	}
 
-	resp, err := http.Post(urlStr, jsonContentType, bytes.NewBuffer(reqByte))
+	resp, err := doInternal(http.MethodPost, urlStr, jsonContentType, bytes.NewBuffer(reqByte))
 	if err != nil {
 		log.Log(ctx).WithField("url", urlStr).WithField("reqParam", reqParam).
 			Error(err)
@@ -46,7 +85,7 @@ func Post(ctx context.Context, urlStr string, reqParam interface{}) ([]byte, err
 
 // Get http请求
 func Get(ctx context.Context, urlStr string, rsp interface{}) error {
-	resp, err := http.Get(urlStr)
+	resp, err := doInternal(http.MethodGet, urlStr, "", nil)
 	if err != nil {
 		log.Log(ctx).WithField("url", urlStr).Error(err)
 		return err
