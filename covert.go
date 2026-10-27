@@ -13,7 +13,7 @@ func GetFieldString(sendParamEntity interface{}) string {
 	v := reflect.ValueOf(sendParamEntity)
 
 	// Check if the type is a pointer and get the element type
-	if m.Kind() == reflect.Ptr {
+	if m.Kind() == reflect.Pointer {
 		m = m.Elem()
 		v = v.Elem()
 	}
